@@ -3,6 +3,9 @@ import numpy as np
 
 
 def bernoulli_log_likelihood(data, theta):
+    import math
+
+def bernoulli_log_likelihood(data, theta):
     """
     Compute the Bernoulli log-likelihood for binary data.
 
@@ -25,6 +28,23 @@ def bernoulli_log_likelihood(data, theta):
     - Raise ValueError if theta is not in (0,1)
     - Raise ValueError if data contains values other than 0 and 1
     """
+    if data is None or len(data) == 0:
+        raise ValueError("data must not be empty")
+
+    if not (0 < theta < 1):
+        raise ValueError("theta must be in the interval (0, 1)")
+
+    log_theta = math.log(theta)
+    log_one_minus_theta = math.log(1 - theta)
+
+    ll = 0.0
+    for x in data:
+        if x not in (0, 1):
+            raise ValueError("data must contain only 0 and 1")
+        ll += x * log_theta + (1 - x) * log_one_minus_theta
+
+    return ll
+
     raise NotImplementedError("Implement bernoulli_log_likelihood")
 
 
@@ -60,6 +80,46 @@ def bernoulli_mle_with_comparison(data, candidate_thetas=None):
     - Compute candidate log-likelihoods using bernoulli_log_likelihood
     - In case of ties in best candidate, return the first one encountered
     """
+    # Validate data
+    if data is None or len(data) == 0:
+        raise ValueError("data must not be empty")
+
+    for x in data:
+        if x not in (0, 1):
+            raise ValueError("data must contain only 0 and 1")
+
+    # Default candidate thetas
+    if candidate_thetas is None:
+        candidate_thetas = [0.2, 0.5, 0.8]
+
+    # Count successes and failures
+    num_successes = sum(data)
+    num_failures = len(data) - num_successes
+
+    # Compute analytical MLE
+    mle = num_successes / len(data)
+
+    # Compute log-likelihoods for candidates
+    log_likelihoods = {}
+    best_candidate = None
+    best_ll = None
+
+    for theta in candidate_thetas:
+        ll = bernoulli_log_likelihood(data, theta)
+        log_likelihoods[theta] = ll
+
+        if best_ll is None or ll > best_ll:
+            best_ll = ll
+            best_candidate = theta
+        # ties: do nothing (keeps first encountered)
+
+    return {
+        "mle": mle,
+        "num_successes": num_successes,
+        "num_failures": num_failures,
+        "log_likelihoods": log_likelihoods,
+        "best_candidate": best_candidate
+    }
     raise NotImplementedError("Implement bernoulli_mle_with_comparison")
 
 
@@ -90,6 +150,24 @@ def poisson_log_likelihood(data, lam):
     -----
     You may use math.lgamma(x + 1) for log(x!) since log(x!) = lgamma(x+1).
     """
+    if data is None or len(data) == 0:
+        raise ValueError("data must not be empty")
+
+    if lam <= 0:
+        raise ValueError("lam must be > 0")
+
+    ll = 0.0
+    log_lam = math.log(lam)
+
+    for x in data:
+        if not isinstance(x, (int, np.integer)) or x < 0:
+            raise ValueError("data must contain only nonnegative integers")
+
+        ll += x * log_lam - lam - math.lgamma(x + 1)
+
+    
+    return ll
+
     raise NotImplementedError("Implement poisson_log_likelihood")
 
 
@@ -126,4 +204,45 @@ def poisson_mle_analysis(data, candidate_lambdas=None):
     - Compute candidate log-likelihoods using poisson_log_likelihood
     - In case of ties in best candidate, return the first one encountered
     """
+
+    if data is None or len(data) == 0:
+        raise ValueError("data must not be empty")
+
+    for x in data:
+        if not isinstance(x, (int, np.integer)) or x < 0:
+            raise ValueError("data must contain only nonnegative integers")
+
+    # Default candidate lambdas
+    if candidate_lambdas is None:
+        candidate_lambdas = [1.0, 3.0, 5.0]
+
+    n = len(data)
+    total_count = int(sum(data))
+    sample_mean = total_count / n
+
+    # Poisson MLE is sample mean
+    mle = sample_mean
+
+    # Compute log-likelihoods for candidates
+    log_likelihoods = {}
+    best_candidate = None
+    best_ll = None
+
+    for lam in candidate_lambdas:
+        ll = poisson_log_likelihood(data, lam)
+        log_likelihoods[lam] = ll
+
+        if best_ll is None or ll > best_ll:
+            best_ll = ll
+            best_candidate = lam
+        # tie -> keep first encountered
+
+    return {
+        "mle": mle,
+        "sample_mean": sample_mean,
+        "total_count": total_count,
+        "n": n,
+        "log_likelihoods": log_likelihoods,
+        "best_candidate": best_candidate
+    }
     raise NotImplementedError("Implement poisson_mle_analysis")
